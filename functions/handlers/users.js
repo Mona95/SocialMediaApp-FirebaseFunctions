@@ -129,7 +129,81 @@ exports.getAuthenticatedUser = (request, response) => {
       data.forEach((doc) => {
         userData.likes.push(doc.data());
       });
+      return db
+        .collection("notifications")
+        .where("recipient", "==", request.user.handle)
+        .orderBy("createdAt", "desc")
+        .limit(10)
+        .get();
+    })
+    .then((data) => {
+      userData.notifications = [];
+      data.forEach((doc) => {
+        userData.notifications.push({
+          recipient: doc.data().recipient,
+          sender: doc.data().sender,
+          createdAt: doc.data().createdAt,
+          type: doc.data().type,
+          read: doc.data().read,
+          screamId: doc.data().screamId,
+          notificationId: doc.data().id,
+        });
+      });
       return response.json(userData);
+    })
+    .catch((error) => {
+      console.error(error);
+      return response.status(500).json({ error: error.code });
+    });
+};
+
+exports.getUserDetails = (request, response) => {
+  let userData = {};
+  db.doc(`/users/${request.params.handle}`)
+    .get()
+    .then((doc) => {
+      if (doc.exists) {
+        userData.user = doc.data();
+        return db
+          .collection("screams")
+          .where("userHandle", "==", request.params.handle)
+          .orderBy("createdAt", "desc")
+          .get();
+      } else {
+        return response.status(404).json({ error: "user not found" });
+      }
+    })
+    .then((data) => {
+      userData.screams = [];
+      data.forEach((doc) => {
+        userData.screams.push({
+          body: doc.data().body,
+          userHandle: doc.data().userHandle,
+          userImage: doc.data().userImage,
+          likeCount: doc.data().likeCount,
+          commentCount: doc.data().commentCount,
+          createdAt: doc.data().createdAt,
+          screamId: doc.id,
+        });
+      });
+      return response.json(userData);
+    })
+    .catch((error) => {
+      console.error(error);
+      return response.status(500).json({ error: error.code });
+    });
+};
+
+exports.markNotificationsRead = (request, response) => {
+  let batch = db.batch();
+  request.body.forEach((notificationId) => {
+    const notification = db.doc(`/notifications/${notificationId}`);
+    batch.update(notification, { read: true });
+  });
+  batch
+    .commit()
+    .then(() => {
+      return response.json({ message: "Notification marked read" });
     })
     .catch((error) => {
       console.error(error);
