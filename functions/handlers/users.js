@@ -5,10 +5,13 @@ const { appConfig } = require("../appAccount.js");
 const {
   validateSignupData,
   validateLoginData,
+  reduceUserDetails,
 } = require("../utils/validators.js");
+const { response, request } = require("express");
 
 firebase.initializeApp(appConfig);
 
+//Sign Up Users
 exports.signUp = (request, response) => {
   const newUser = {
     email: request.body.email,
@@ -64,6 +67,7 @@ exports.signUp = (request, response) => {
     });
 };
 
+//Login for Users
 exports.login = (request, response) => {
   const user = {
     email: request.body.email,
@@ -92,6 +96,48 @@ exports.login = (request, response) => {
     });
 };
 
+//Add User Details
+exports.addUserDetails = (request, response) => {
+  let userDetails = reduceUserDetails(request.body);
+  db.doc(`/users/${request.user.handle}`) //because of fbAuth we have access to user
+    .update(userDetails)
+    .then(() => {
+      return response.json({ message: "Details added successfully" });
+    })
+    .catch((error) => {
+      console.error(error);
+      return response.status(500).json({ error: error.code });
+    });
+};
+
+//Get own user details
+exports.getAuthenticatedUser = (request, response) => {
+  let userData = {};
+  db.doc(`/users/${request.user.handle}`)
+    .get()
+    .then((doc) => {
+      if (doc.exists) {
+        userData.credetials = doc.data();
+        return db
+          .collection("likes")
+          .where("userHandle", "==", request.user.handle)
+          .get();
+      }
+    })
+    .then((data) => {
+      userData.likes = [];
+      data.forEach((doc) => {
+        userData.likes.push(doc.data());
+      });
+      return response.json(userData);
+    })
+    .catch((error) => {
+      console.error(error);
+      return response.status(500).json({ error: error.code });
+    });
+};
+
+//Upload a Profile Image for User
 exports.uploadImage = (request, response) => {
   const BusBoy = require("busboy");
   const path = require("path");
