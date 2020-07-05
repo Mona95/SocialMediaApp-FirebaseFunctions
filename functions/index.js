@@ -45,14 +45,16 @@ app.post("/notifications", fbAuth, markNotificationsRead);
 
 exports.api = functions.region("europe-west1").https.onRequest(app);
 
+// TRIGGERS
 exports.createNotificationOnLike = functions
   .region("europe-west1")
   .firestore.document("likes/{id}")
   .onCreate((snapshot) => {
-    db.doc(`/screams/${snapshot.data().screamId}`)
+    return db
+      .doc(`/screams/${snapshot.data().screamId}`)
       .get()
       .then((doc) => {
-        if (doc.exists) {
+        if (doc.exists && doc.data().userHandle !== snapshot.data.userHandle) {
           return db.doc(`/notifications/${snapshot.id}`).set({
             createdAt: new Date().toISOString(),
             recipient: doc.data().userHandle,
@@ -63,12 +65,8 @@ exports.createNotificationOnLike = functions
           });
         }
       })
-      .then(() => {
-        return;
-      })
       .catch((error) => {
         console.error(error);
-        return;
       });
   });
 
@@ -76,11 +74,9 @@ exports.deleteNotificationOnUnLike = functions
   .region("europe-west1")
   .firestore.document("likes/{id}")
   .onDelete((snapshot) => {
-    db.doc(`/notifications/${snapshot.id}`)
+    return db
+      .doc(`/notifications/${snapshot.id}`)
       .delete()
-      .then(() => {
-        return;
-      })
       .catch((error) => {
         console.error(error);
         return;
@@ -91,10 +87,11 @@ exports.createNotificationOnComment = functions
   .region("europe-west1")
   .firestore.document("comments/{id}")
   .onCreate((snapshot) => {
-    db.doc(`/screams/${snapshot.data().screamId}`)
+    return db
+      .doc(`/screams/${snapshot.data().screamId}`)
       .get()
       .then((doc) => {
-        if (doc.exists) {
+        if (doc.exists && doc.data().userHandle !== snapshot.data.userHandle) {
           return db.doc(`/notifications/${snapshot.id}`).set({
             createdAt: new Date().toISOString(),
             recipient: doc.data().userHandle,
@@ -104,9 +101,6 @@ exports.createNotificationOnComment = functions
             screamId: doc.id,
           });
         }
-      })
-      .then(() => {
-        return;
       })
       .catch((error) => {
         console.error(error);

@@ -62,7 +62,9 @@ exports.signUp = (request, response) => {
       if (error.code === "auth/email-already-in-use") {
         return response.status(400).json({ error: `Email is already in use.` });
       } else {
-        return response.status(500).json({ error: error.code });
+        return response
+          .status(500)
+          .json({ general: "Something went wrong, please try again" });
       }
     });
 };
@@ -88,11 +90,9 @@ exports.login = (request, response) => {
     })
     .catch((error) => {
       console.error(error);
-      if (error.code === "auth/wrong-password")
-        return response
-          .status(403)
-          .json({ general: "Wrong credentials,please try again" });
-      else return response.status(500).json({ error: error.code });
+      return response
+        .status(403)
+        .json({ general: "Wrong credentials,please try again" });
     });
 };
 
